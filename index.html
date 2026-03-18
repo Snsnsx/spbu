@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Выбираем лабораторную работу</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --grid: #14141e;
+    --a1: #00e5ff;
+    --a2: #ff2d78;
+    --glow1: rgba(0,229,255,0.18);
+    --glow2: rgba(255,45,120,0.18);
+    --text: #e8eaf6;
+    --muted: #5c6080;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial vignette */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 30%, var(--bg) 85%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .scene {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 36px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+  }
+
+  .header-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--a1);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+
+  .header h1 {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(1.1rem, 3vw, 1.65rem);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    background: linear-gradient(100deg, var(--a1) 0%, #fff 50%, var(--a2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── WHEEL WRAPPER ── */
+  .wheel-wrap {
+    position: relative;
+    width: 340px;
+    height: 340px;
+  }
+
+  /* Glow ring behind wheel */
+  .wheel-wrap::before {
+    content: '';
+    position: absolute;
+    inset: -18px;
+    border-radius: 50%;
+    background: conic-gradient(var(--glow1), var(--glow2), var(--glow1));
+    filter: blur(22px);
+    animation: rotateGlow 6s linear infinite;
+    z-index: 0;
+  }
+
+  @keyframes rotateGlow {
+    to { transform: rotate(360deg); }
+  }
+
+  canvas#wheel {
+    position: relative;
+    z-index: 1;
+    border-radius: 50%;
+    display: block;
+  }
+
+  /* Pointer / arrow */
+  .pointer {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: 0;
+    height: 0;
+    border-left: 13px solid transparent;
+    border-right: 13px solid transparent;
+    border-top: 28px solid #fff;
+    filter: drop-shadow(0 0 8px var(--a1)) drop-shadow(0 0 2px #fff);
+  }
+
+  /* ── SPIN BUTTON ── */
+  .btn-spin {
+    position: relative;
+    font-family: 'Unbounded', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: linear-gradient(100deg, var(--a1), var(--a2));
+    border: none;
+    padding: 14px 44px;
+    cursor: pointer;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    transition: transform 0.15s, filter 0.15s;
+    outline: none;
+  }
+
+  .btn-spin:hover { filter: brightness(1.2); transform: scale(1.03); }
+  .btn-spin:active { transform: scale(0.97); }
+  .btn-spin:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* ── RESULT PANEL ── */
+  .result {
+    min-height: 80px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .result.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .result-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .result-text {
+    font-family: 'Unbounded', sans-serif;
+    font-size: clamp(0.85rem, 2.5vw, 1.15rem);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .result-text.cyan { color: var(--a1); text-shadow: 0 0 18px var(--a1); }
+  .result-text.pink  { color: var(--a2); text-shadow: 0 0 18px var(--a2); }
+
+  /* tick sound visual flash */
+  @keyframes flashTick {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .tick-flash {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    pointer-events: none;
+    animation: flashTick 0.08s ease-out forwards;
+    z-index: 20;
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+
+  <div class="header">
+    <div class="header-sub">// физический практикум</div>
+    <h1>Выбираем<br>лабораторную работу</h1>
+  </div>
+
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="340" height="340"></canvas>
+  </div>
+
+  <button class="btn-spin" id="spinBtn">Крутить</button>
+
+  <div class="result" id="result">
+    <div class="result-label">Выпало</div>
+    <div class="result-text" id="resultText"></div>
+  </div>
+
+</div>
+
+<script>
+const SECTORS = [
+  {
+    label: "Однофотонные\nвычисления",
+    color1: "#001f40",
+    color2: "#003a6e",
+    accent: "#00e5ff",
+    cls: "cyan"
+  },
+  {
+    label: "Время\nкогерентности\nлазера",
+    color1: "#2a0022",
+    color2: "#540040",
+    accent: "#ff2d78",
+    cls: "pink"
+  }
+];
+
+const canvas = document.getElementById("wheel");
+const ctx    = canvas.getContext("2d");
+const W = canvas.width, H = canvas.height;
+const cx = W/2, cy = H/2, R = W/2 - 8;
+
+let angle = 0;           // current rotation (radians)
+let spinning = false;
+
+// ── DRAW ──────────────────────────────────────────────────────────────────
+function drawWheel(rot) {
+  ctx.clearRect(0, 0, W, H);
+  const n = SECTORS.length;
+  const arc = (2 * Math.PI) / n;
+
+  SECTORS.forEach((s, i) => {
+    const start = rot + i * arc;
+    const end   = start + arc;
+    const mid   = start + arc / 2;
+
+    // sector fill with radial gradient
+    const grad = ctx.createRadialGradient(cx, cy, R*0.05, cx, cy, R);
+    grad.addColorStop(0, s.color2);
+    grad.addColorStop(1, s.color1);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, start, end);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // accent border arc
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, start, end);
+    ctx.strokeStyle = s.accent;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // separator line
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(start), cy + R * Math.sin(start));
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // label
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(mid);
+
+    const lines = s.label.split("\n");
+    const lineH = 22;
+    const totalH = lines.length * lineH;
+    const textX = R * 0.52;
+
+    // glow backdrop
+    ctx.shadowColor = s.accent;
+    ctx.shadowBlur  = 14;
+    ctx.fillStyle   = "#fff";
+    ctx.font        = "bold 13px 'Unbounded', sans-serif";
+    ctx.textAlign   = "center";
+    ctx.textBaseline= "middle";
+    lines.forEach((line, li) => {
+      const y = -(totalH / 2) + li * lineH + lineH / 2;
+      ctx.fillText(line, textX, y);
+    });
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  });
+
+  // center disc
+  const cGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28);
+  cGrad.addColorStop(0, "#2a2a3e");
+  cGrad.addColorStop(1, "#0a0a0f");
+  ctx.beginPath();
+  ctx.arc(cx, cy, 26, 0, 2*Math.PI);
+  ctx.fillStyle = cGrad;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.15)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, 2*Math.PI);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+}
+
+drawWheel(angle);
+
+// ── SPIN ──────────────────────────────────────────────────────────────────
+const btn = document.getElementById("spinBtn");
+const resultEl = document.getElementById("result");
+const resultText = document.getElementById("resultText");
+
+let lastTickSector = -1;
+
+function getSectorAtTop(rot) {
+  const n = SECTORS.length;
+  const arc = (2 * Math.PI) / n;
+  // top = -π/2; normalise angle
+  let a = ((-Math.PI/2) - rot % (2*Math.PI) + 4*Math.PI) % (2*Math.PI);
+  return Math.floor(a / arc) % n;
+}
+
+function spawnTick() {
+  const el = document.createElement("div");
+  el.className = "tick-flash";
+  document.querySelector(".wheel-wrap").appendChild(el);
+  setTimeout(() => el.remove(), 120);
+}
+
+btn.addEventListener("click", () => {
+  if (spinning) return;
+  spinning = true;
+  btn.disabled = true;
+  resultEl.classList.remove("visible");
+
+  const extraSpins = (5 + Math.random() * 4) * 2 * Math.PI;
+  const stopAngle  = angle + extraSpins;
+  const duration   = 3200 + Math.random() * 800; // ms
+  const start      = performance.now();
+  const startAngle = angle;
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+
+  function frame(now) {
+    const elapsed = now - start;
+    const t = Math.min(elapsed / duration, 1);
+    angle = startAngle + (stopAngle - startAngle) * easeOut(t);
+
+    drawWheel(angle);
+
+    // tick on sector change
+    const cur = getSectorAtTop(angle);
+    if (cur !== lastTickSector) {
+      lastTickSector = cur;
+      spawnTick();
+    }
+
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      angle = stopAngle;
+      drawWheel(angle);
+      spinning = false;
+      btn.disabled = false;
+      showResult(getSectorAtTop(angle));
+    }
+  }
+  requestAnimationFrame(frame);
+});
+
+function showResult(idx) {
+  const s = SECTORS[idx];
+  resultText.textContent = s.label.replace(/\n/g, " ");
+  resultText.className = "result-text " + s.cls;
+  resultEl.classList.add("visible");
+}
+</script>
+</body>
+</html>
