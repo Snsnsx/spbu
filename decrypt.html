@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Decrypt Yandex Disk Message</title>
+
+<style>
+
+body{
+font-family: system-ui;
+background:#0f172a;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+
+.app{
+width:460px;
+background:#111827;
+border-radius:16px;
+padding:20px;
+box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+
+h1{
+font-size:18px;
+margin-bottom:10px;
+}
+
+textarea,input{
+width:100%;
+padding:10px;
+margin-top:8px;
+margin-bottom:12px;
+border-radius:8px;
+border:none;
+background:#1f2937;
+color:white;
+font-size:14px;
+}
+
+button{
+width:100%;
+padding:12px;
+background:#3b82f6;
+border:none;
+border-radius:10px;
+font-weight:600;
+cursor:pointer;
+}
+
+button:hover{
+background:#2563eb;
+}
+
+.result{
+margin-top:12px;
+padding:12px;
+background:#020617;
+border-radius:8px;
+min-height:60px;
+white-space:pre-wrap;
+}
+
+small{
+opacity:0.7;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app">
+
+<h1>Decrypt message</h1>
+
+<label>Secret key</label>
+<input id="key" placeholder="shared password" />
+
+<label>Encrypted JSON</label>
+
+<textarea id="input" placeholder='{
+ "cipher":"...",
+ "iv":"..."
+}'></textarea>
+
+<button onclick="decrypt()">decrypt</button>
+
+<div class="result" id="output"></div>
+
+<small>
+вставь содержимое файла message_XXXX.json
+</small>
+
+</div>
+
+
+<script>
+
+async function deriveKey(password){
+
+const enc = new TextEncoder();
+
+const keyMaterial = await crypto.subtle.importKey(
+"raw",
+enc.encode(password),
+"PBKDF2",
+false,
+["deriveKey"]
+);
+
+return crypto.subtle.deriveKey(
+{
+name:"PBKDF2",
+salt: enc.encode("yadisk-messenger"),
+iterations:100000,
+hash:"SHA-256"
+},
+keyMaterial,
+{
+name:"AES-GCM",
+length:256
+},
+false,
+["decrypt"]
+);
+
+}
+
+
+
+async function decrypt(){
+
+try{
+
+const keyText = document.getElementById("key").value;
+
+const json = JSON.parse(
+document.getElementById("input").value
+);
+
+const key = await deriveKey(keyText);
+
+const cipherBytes = Uint8Array.from(
+atob(json.cipher),
+c=>c.charCodeAt(0)
+);
+
+const ivBytes = Uint8Array.from(
+atob(json.iv),
+c=>c.charCodeAt(0)
+);
+
+
+const decrypted = await crypto.subtle.decrypt(
+{
+name:"AES-GCM",
+iv: ivBytes
+},
+key,
+cipherBytes
+);
+
+const text = new TextDecoder().decode(decrypted);
+
+document.getElementById("output").innerText = text;
+
+}
+catch(e){
+
+document.getElementById("output").innerText =
+"error: "+ e.message;
+
+}
+
+}
+
+</script>
+
+</body>
+</html>
